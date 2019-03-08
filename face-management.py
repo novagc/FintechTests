@@ -16,9 +16,9 @@ def GetParams():
 
 def SimpleAdd(session, video):
     try:
-        personID, facesID, count = session.CreateAnonPerson(video)
+        personID, facesID, count = session.CreatePerson(video=video)
         session.UpdateGroupData("Updated")
-        print('{1} frames extracted{0}PersonId: {2}{0}FaceIds{0}======={0}{3}'.format('\n', count, personID, '\n'.join([x['persistedFaceId'] for x in facesID])))
+        print('{1} frames extracted{0}PersonId: {2}{0}FaceIds{0}======={0}{3}'.format('\n', count, personID, '\n'.join(facesID)))
     except (az.FacesCountError, az.FramesCountError):
         print('Video does not contain any face')
     except az.PersonExistError as exc:
@@ -27,27 +27,40 @@ def SimpleAdd(session, video):
 def GetPersonList(session):
     try:
         session.CheckGroupExist()
-        print('\n'.join(session.GetPersonList()))
+        if session.CountPersons() == 0:
+            print('No persons found')
+        else:
+            print('Persons IDs:\n{0}'.format('\n'.join(session.GetPersonList())))
     except az.PersonGroupExistError as pgee:
         print(pgee.message)
-    
 
 def DeletePerson(session, personID):
     try:
+        session.CheckGroupExist()
         session.DeletePerson(personID=personID)
         session.UpdateGroupData("Updated")
+        print('Person deleted')
+    except az.PersonGroupExistError:
+        print('The group does not exist')
     except az.PersonExistError:
-        print('Person with id {0} does not exist'.format(personID))
+        print('The person does not exist')
 
 def Train(session):
-    if session.CheckGroupUpdation():
-        print('Training task for {0} persons started'.format(session.StartTrain()))
-        session.UpdateGroupData('Don\'t updated')
-    else:
-        print('System does not updated')
+    try:
+        session.CheckGroupExist()
+        if session.CountPersons() == 0:
+            print('There is nothing to train')
+        elif session.CheckGroupUpdation():
+            print('Training successfully started')
+            session.UpdateGroupData('Do not updated')
+        else:
+            print('Already trained')
+    except az.PersonGroupExistError:
+        print('There is nothing to train')
 
 def UnsaveAuth(session, video):
     try:
+        session.CheckGroupExist()
         personID = session.IdentifyPerson(video)
         print(personID)
     except az.SystemReadinessError:
